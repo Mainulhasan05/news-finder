@@ -5,16 +5,7 @@ import time
 from datetime import datetime
 
 def search_prothom_alo(keyword, max_results=100):
-    """
-    Search Prothom Alo news with a keyword and return all results
-    
-    Parameters:
-        keyword (str): Search keyword
-        max_results (int): Maximum number of results to fetch
-    
-    Returns:
-        list: List of news articles
-    """
+
     # URL encode the keyword
     encoded_keyword = urllib.parse.quote(keyword)
     
