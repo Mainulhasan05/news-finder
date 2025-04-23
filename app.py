@@ -21,7 +21,7 @@ def search_prothom_alo(keyword, max_results=100):
     # Base URL with parameters
     base_url = "https://www.prothomalo.com/api/v1/advanced-search"
     section_ids = "17532,17533,17535,17536,17538,17552,17553,17555,17556,17560,17562,17563,17566,17567,17568,17569,17570,17571,17572,17573,17584,17585,17586,17587,17588,17589,17591,17599,17600,17602,17606,17678,17679,17680,17681,17682,17683,17684,17685,17686,17687,17688,17689,17690,17691,17693,17694,17695,17696,17697,17698,17699,17700,17701,17702,17704,17705,17706,17708,17709,17714,17717,17736,17737,17738,17739,17743,19182,19183,19184,19185,19195,19196,19197,19198,19199,19200,22236,22237,22321,22323,22324,22325,22326,22327,22328,22329,22330,22332,22333,22334,22335,22336,22337,22338,22339,22340,22341,22342,22349,22350,22351,22352,22362,22363,22364,22365,22368,22515,22516,22517,22518,22519,22520,22575,22701,23230,23382,23383,23426,24541,26653,29465,35621,35622,35623,35624,35625,35626,35867,35868,35871,67467,95322"
-    fields = "headline,subheadline,slug,url,tags,hero-image-s3-key,hero-image-caption,hero-image-metadata,last-published-at,alternative,authors,author-name,author-id,sections,story-template,metadata,hero-image-attribution,access"
+    fields = "headline,url,last-published-at"
     
     # Initialize variables
     all_results = []
@@ -38,19 +38,20 @@ def search_prothom_alo(keyword, max_results=100):
             
             data = response.json()
             items = data.get('items', [])
+            total_results = data.get('total', 0)
             
             # Break if no more results
             if not items:
                 break
                 
             all_results.extend(items)
-            print(f"Fetched {len(items)} results. Total so far: {len(all_results)}")
+            print(f"Fetched {len(items)} results. Total so far: {len(all_results)} of {total_results}")
             
             # Update offset for next batch
             offset += limit
             
-            # Check if we've reached the max_results limit
-            if len(all_results) >= max_results:
+            # Check if we've reached the max_results limit or total available results
+            if len(all_results) >= max_results or len(all_results) >= total_results:
                 all_results = all_results[:max_results]
                 break
                 
@@ -68,49 +69,37 @@ def process_article_data(articles):
     processed_data = []
     
     for article in articles:
-        # Extract basic information
-        headline = article.get('headline', '')
-        subheadline = article.get('subheadline', '')
+        # Extract the specific fields we need
+        title = article.get('headline', '')
         url = article.get('url', '')
         
-        # Extract publication date
-        published_at = article.get('last-published-at', '')
-        if published_at:
+        # Process the last-published-at timestamp
+        last_updated_timestamp = article.get('last-published-at')
+        last_updated = None
+        if last_updated_timestamp:
             try:
-                # Convert to datetime for better Excel formatting
-                published_at = datetime.fromisoformat(published_at.replace('Z', '+00:00'))
+                # Convert milliseconds timestamp to datetime
+                last_updated = datetime.fromtimestamp(last_updated_timestamp / 1000)
             except:
-                pass
-        
-        # Extract author information
-        authors = article.get('authors', [])
-        author_names = []
-        for author in authors:
-            if isinstance(author, dict):
-                author_name = author.get('name', '')
-                if author_name:
-                    author_names.append(author_name)
-        author_string = ', '.join(author_names)
-        
-        # Extract tags
-        tags = article.get('tags', [])
-        tags_string = ', '.join(tags) if tags else ''
+                # Fallback if the timestamp format is different
+                try:
+                    last_updated = datetime.fromisoformat(str(last_updated_timestamp).replace('Z', '+00:00'))
+                except:
+                    last_updated = str(last_updated_timestamp)
         
         # Add to processed data
         processed_data.append({
-            'Headline': headline,
-            'Subheadline': subheadline,
+            'Title': title,
             'URL': url,
-            'Published Date': published_at,
-            'Authors': author_string,
-            'Tags': tags_string
+            'Last Updated': last_updated
         })
     
     return pd.DataFrame(processed_data)
 
 def main():
     # Get search keyword from user
-    keyword = input("Enter your search keyword: ")
+    # keyword = input("Enter your search keyword: ")
+    keyword = "ছাত্রদল"
     max_results = int(input("Enter maximum number of results to fetch (default: 100): ") or "100")
     
     print(f"Searching for '{keyword}'...")
